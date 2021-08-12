@@ -56,16 +56,17 @@ def mqtt_connect_subscribe():
     return client
 
 def mqtt_on_message(topic, msg):
-    global MQTT_REGEX                    # Standard variables for mqtt projects
-    global mqtt_dummy1, mqtt_dummy2 # Specific for dht11
+    global MQTT_REGEX, publvl3          # Standard variables for mqtt projects
+    global mqtt_offsetsD        # Temp, humidity offsets to calibrate each dht11
     main_logger.debug("Received topic(tag): {0} payload:{1}".format(topic, msg.decode("utf-8", "ignore")))
     msgmatch = re.match(MQTT_REGEX, topic)
     if msgmatch:
         mqtt_payload = ujson.loads(msg.decode("utf-8", "ignore")) # decode json data
         mqtt_topic = [msgmatch.group(0), msgmatch.group(1), msgmatch.group(2), type(mqtt_payload)]
-        if mqtt_topic[1] == b'dht11ZCMD':
-            mqtt_dummy2 = int(mqtt_topic[2])
-            mqtt_dummy1 = int(mqtt_payload)  # Set the servo duty from mqtt payload
+        if mqtt_topic[2] == publvl3:
+            mqtt_sensor = mqtt_topic[1].decode("utf-8")  # Convert binary to string
+            mqtt_offsetsD[mqtt_sensor]['temp'] = mqtt_payload['temp']
+            mqtt_offsetsD[mqtt_sensor]['humidity'] = mqtt_payload['humidity']
 
 def mqtt_reset():
     main_logger.info('Failed to connect to MQTT broker. Reconnecting...')
@@ -159,18 +160,19 @@ thD = {}  # dictionary for storing temp/humidity values
 dht11Set = {}
 offset = {}
 
-device = 'dht11A'
-lvl2 = 'location1'
-publvl3 = ESPID + "32a"
+device = 'dht11ALocation1'
+lvl2 = device
+publvl3 = ESPID + "32A"
 data_keys = ['tempf', 'humidityf']
 setup_device(device, lvl2, publvl3, data_keys)
 dht11pin = 5
-mqtt_dummy1, mqtt_dummy2 = 0, 0   # Initialize. Updated in mqtt on_message 
 pinsummary.append(dht11pin)
 dht11Set[device] = dht.DHT11(Pin(dht11pin))
-offset[device] = {}
-offset[device]['temp'] = 0.0
-offset[device]['humidity'] = -9.0
+mqtt_offsetsD = {}
+deviceCMD = device + "ZCMD"
+mqtt_offsetsD[deviceCMD] = {}
+mqtt_offsetsD[deviceCMD]['temp'] = 0.0
+mqtt_offsetsD[deviceCMD]['humidity'] = -9.0
 
 main_logger.info('Pins in use:{0}'.format(sorted(pinsummary)))
 #==========#
@@ -182,7 +184,7 @@ except OSError as e:
 # MQTT setup is successful, publish status msg and flash on-board led
 mqtt_client.publish(b'esp32status', ESPID + b' connected, entering main loop')
 # Initialize flags and timers
-on_msg_timer_ms = 10000    # Frequency (ms) to check for msg
+on_msg_timer_ms = 1000    # Frequency (ms) to check for msg
 t0onmsg_ms = utime.ticks_ms()
 checkmsgs = False
 
@@ -209,8 +211,8 @@ while True:
         if getdata:
             for device, dht11 in dht11Set.items():
                 dht11.measure()
-                thD['temp'] = dht11.temperature() * (9/5) + 32.0 + offset[device]['temp']
-                thD['humidity'] = dht11.humidity() + offset[device]['humidity']
+                thD['temp'] = dht11.temperature() * (9/5) + 32.0 + mqtt_offsetsD[deviceCMD]['temp']
+                thD['humidity'] = dht11.humidity() + mqtt_offsetsD[deviceCMD]['humidity']
                 deviceD[device]['data'] = thD
                 if deviceD[device]['data'] is not None:
                     deviceD[device]['send'] = True
