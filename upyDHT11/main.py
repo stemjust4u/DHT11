@@ -211,8 +211,8 @@ while True:
         if getdata:
             for device, dht11 in dht11Set.items():
                 dht11.measure()
-                thD['temp'] = dht11.temperature() * (9/5) + 32.0 + mqtt_offsetsD[deviceCMD]['temp']
-                thD['humidity'] = dht11.humidity() + mqtt_offsetsD[deviceCMD]['humidity']
+                thD['tempf'] = dht11.temperature() * (9/5) + 32.0 + mqtt_offsetsD[deviceCMD]['temp']
+                thD['humidityf'] = dht11.humidity() + mqtt_offsetsD[deviceCMD]['humidity']
                 deviceD[device]['data'] = thD
                 if deviceD[device]['data'] is not None:
                     deviceD[device]['send'] = True
