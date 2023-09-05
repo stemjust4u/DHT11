@@ -184,11 +184,11 @@ except OSError as e:
 # MQTT setup is successful, publish status msg and flash on-board led
 mqtt_client.publish(b'esp32status', ESPID + b' connected, entering main loop')
 # Initialize flags and timers
-on_msg_timer_ms = 1000    # Frequency (ms) to check for msg
+on_msg_timer_ms = 100000    # Frequency (ms) to check for msg
 t0onmsg_ms = utime.ticks_ms()
 checkmsgs = False
 
-getdata_sndmsg_timer_ms =2000  # Frequency for getting/sending data
+getdata_sndmsg_timer_ms =60000  # Frequency for getting/sending data
 t0_datapub_ms = utime.ticks_ms()
 sendmsgs = False
 getdata = False
