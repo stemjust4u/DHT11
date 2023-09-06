@@ -146,7 +146,7 @@ if machine.reset_cause() == machine.DEEPSLEEP_RESET:
 
 # umqttsimple requires topics to be byte (b') format. For string.join to work on topics, all items must be the same, bytes.
 ESPID = b'esp'  # Specific MQTT_PUB_TOPICS created at time of publishing using string.join (specifically lvl2.join)
-mqtt_setup('192.168.254.71')  # Setup mqtt variables (topics and data containers) used in on_message, main loop, and publishing
+mqtt_setup('rpi3mqtt1')  # Setup mqtt variables (topics and data containers) used in on_message, main loop, and publishing
 
 deviceD = {}       # Primary container for storing all topics and data
 printcolor = True

@@ -2,7 +2,6 @@ import time
 from umqttsimple import MQTTClient
 import ubinascii
 import machine
-import micropython
 import network
 import esp
 from machine import Pin
@@ -13,13 +12,13 @@ gc.collect()
 
 ssid = 'Freddie-Windstream'
 password = 'ironfish17'
-mqtt_server = '192.168.1.3'
+mqtt_server = 'rpi3mqtt1'
 #EXAMPLE IP ADDRESS or DOMAIN NAME
-#mqtt_server = '192.168.1.106'
+#mqtt_server = 'rpi3mqtt1'
 
 client_id = ubinascii.hexlify(machine.unique_id())
 
-topic_pub_data = b'esp2nred/dht11ALocation2/esp8266A'
+topic_pub_data = b'esp2nred/temp/1'
 
 last_message = 0
 message_interval = 300
