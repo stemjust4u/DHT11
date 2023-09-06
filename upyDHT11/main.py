@@ -160,9 +160,9 @@ thD = {}  # dictionary for storing temp/humidity values
 dht11Set = {}
 offset = {}
 
-device = 'dht11ALocation1'
+device = 'temp'
 lvl2 = device
-publvl3 = ESPID + "32A"
+publvl3 = "1"
 data_keys = ['tempf', 'humidityf']
 setup_device(device, lvl2, publvl3, data_keys)
 dht11pin = 5
@@ -171,8 +171,8 @@ dht11Set[device] = dht.DHT11(Pin(dht11pin))
 mqtt_offsetsD = {}
 deviceCMD = device + "ZCMD"
 mqtt_offsetsD[deviceCMD] = {}
-mqtt_offsetsD[deviceCMD]['temp'] = 0.0
-mqtt_offsetsD[deviceCMD]['humidity'] = -2.0
+mqtt_offsetsD[deviceCMD]['temp'] = -2.0
+mqtt_offsetsD[deviceCMD]['humidity'] = -2
 
 main_logger.info('Pins in use:{0}'.format(sorted(pinsummary)))
 #==========#
@@ -184,11 +184,11 @@ except OSError as e:
 # MQTT setup is successful, publish status msg and flash on-board led
 mqtt_client.publish(b'esp32status', ESPID + b' connected, entering main loop')
 # Initialize flags and timers
-on_msg_timer_ms = 100000    # Frequency (ms) to check for msg
+on_msg_timer_ms = 10000    # Frequency (ms) to check for msg
 t0onmsg_ms = utime.ticks_ms()
 checkmsgs = False
 
-getdata_sndmsg_timer_ms =60000  # Frequency for getting/sending data
+getdata_sndmsg_timer_ms =300000  # Frequency for getting/sending data
 t0_datapub_ms = utime.ticks_ms()
 sendmsgs = False
 getdata = False
@@ -212,7 +212,7 @@ while True:
             for device, dht11 in dht11Set.items():
                 dht11.measure()
                 thD['tempf'] = dht11.temperature() * (9/5) + 32.0 + mqtt_offsetsD[deviceCMD]['temp']
-                thD['humidityf'] = dht11.humidity() + mqtt_offsetsD[deviceCMD]['humidity']
+                thD['humidityi'] = dht11.humidity() + mqtt_offsetsD[deviceCMD]['humidity']
                 deviceD[device]['data'] = thD
                 if deviceD[device]['data'] is not None:
                     deviceD[device]['send'] = True

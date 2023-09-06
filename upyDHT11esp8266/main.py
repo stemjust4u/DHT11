@@ -22,7 +22,7 @@ client_id = ubinascii.hexlify(machine.unique_id())
 topic_pub_data = b'esp2nred/dht11ALocation2/esp8266A'
 
 last_message = 0
-message_interval = 2
+message_interval = 300
 
 station = network.WLAN(network.STA_IF)
 
@@ -37,7 +37,7 @@ print('Connection successful')
 sensor = dht.DHT11(Pin(14))
 dht11D = {}
 offsettemp = 0.0
-offsethum = -9.0
+offsethum = -9
 
 def connect_mqtt():
   global client_id, mqtt_server
@@ -76,7 +76,7 @@ while True:
     if (time.time() - last_message) > message_interval:
       temp, hum = read_sensor()
       dht11D['tempf'] = temp + offsettemp
-      dht11D['humidityf'] = hum + offsethum
+      dht11D['humidityi'] = hum + offsethum
       client.publish(topic_pub_data, ujson.dumps(dht11D))
       last_message = time.time()
   except OSError as e:
