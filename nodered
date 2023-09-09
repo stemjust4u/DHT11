@@ -1,0 +1,1543 @@
+[
+    {
+        "id": "74483b359e98ec98",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "fca922623d587236",
+        "type": "group",
+        "z": "74483b359e98ec98",
+        "style": {
+            "stroke": "#999999",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "fill-opacity": "1",
+            "label": true,
+            "label-position": "nw",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "0d5aaf96a5ba6bc7"
+        ],
+        "x": 574,
+        "y": 39,
+        "w": 332,
+        "h": 82
+    },
+    {
+        "id": "44e1f8d3b21192b3",
+        "type": "mqtt in",
+        "z": "74483b359e98ec98",
+        "name": "",
+        "topic": "esp2nred/temp/#",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "126ea320118c22af",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 160,
+        "wires": [
+            [
+                "fc97543092db5d21"
+            ]
+        ]
+    },
+    {
+        "id": "d892a6b2ba9558ff",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "topic filter",
+        "func": "//let topic=msg.topic;\n//topic=topic.split(\"/\");\nif (msg.payload[1].location==\"1\")\n{\n    return[msg, null, null, null];\n}\nif (msg.payload[1].location == \"2\") \n{\n    return [null, msg, null, null];\n}\nif (msg.payload[1].location == \"3\") \n{\n    return [null, null, msg, null];\n}\nif (msg.payload[1].location == \"4\") \n{\n    return [null, null, null, msg];\n}",
+        "outputs": 4,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 220,
+        "wires": [
+            [
+                "f8e23643f6746b1d",
+                "4428c81b0a84aa1b"
+            ],
+            [
+                "01a2f950f87195f5",
+                "7f1c6b1055c3dc5b"
+            ],
+            [
+                "b61a19b9e66bcf96",
+                "3c465f1bcdac82e9"
+            ],
+            [
+                "a196bc9f55821ceb",
+                "a5f27c3907ab6d25"
+            ]
+        ]
+    },
+    {
+        "id": "fc97543092db5d21",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "parse MQTT JSON str",
+        "func": "var pTopic  = msg.topic.split(\"/\");\n//var jsonObj   =JSON.parse(JSON.stringify(msg.payload));\n// parse converts JSON to js object\n// stringify converts js object to string\n// not sure why node red is now not requiring the parse\nvar jsonObj = msg.payload;\nvar fields = {};\nvar tags = {location:pTopic[2], device:pTopic[1]};\nfor(var item in jsonObj){\n    if (item.endsWith('f')) {\n        fields[item] = parseFloat(jsonObj[item]);\n    }\n    if (item.endsWith('i')) {\n        fields[item] = parseInt(jsonObj[item]);\n    }\n}\nmsg.payload = [\n    fields,\n    tags\n];\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 160,
+        "wires": [
+            [
+                "0d5aaf96a5ba6bc7",
+                "d892a6b2ba9558ff"
+            ]
+        ]
+    },
+    {
+        "id": "0d5aaf96a5ba6bc7",
+        "type": "influxdb out",
+        "z": "74483b359e98ec98",
+        "g": "fca922623d587236",
+        "influxdb": "6006ea813af8600e",
+        "name": "",
+        "measurement": "data",
+        "precision": "",
+        "retentionPolicy": "",
+        "database": "esp2nred",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "organisation",
+        "bucket": "bucket",
+        "x": 740,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "63e92947ab17ddec",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "Convert flux query result to JSON format",
+        "func": "// Convert flux query result to JSON format for charting\n// Built from https://funprojects.blog/\n\nvar series = [\"series\"];\nvar labels = [\"labels\"];\nvar data = \"[[\";\nvar dateTime;\n\n// Flux query will send msg.payload[i]._time as a string. Can not use NUMBER() function to convert it to epoch time.\n// (can use msg.varA-Type = typeof varA to check)\n\nfor (var i=0; i < msg.payload.length; i++) {\n    dateTime = Date.parse(msg.payload[i]._time); // Date.parse will convert date to unix epoch time. ie 1614630735\n    data += '{ \"x\":' + dateTime + ', \"y\":' + msg.payload[i]._value + '}';\n    if (i < (msg.payload.length - 1)) {\n        data += \",\"\n    } else {\n        data += \"]]\"\n    }\n}\nvar jsondata = JSON.parse(data);\nmsg.payload = [{\"series\": series, \"data\": jsondata, \"labels\": labels}];\nmsg.playload = data;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 860,
+        "y": 340,
+        "wires": [
+            [
+                "5d31b1d89a6bc6e4"
+            ]
+        ]
+    },
+    {
+        "id": "4e53420b651676bd",
+        "type": "influxdb in",
+        "z": "74483b359e98ec98",
+        "influxdb": "3e3327aa.370598",
+        "name": "",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "organisation",
+        "x": 550,
+        "y": 340,
+        "wires": [
+            [
+                "63e92947ab17ddec"
+            ]
+        ]
+    },
+    {
+        "id": "5d31b1d89a6bc6e4",
+        "type": "ui_chart",
+        "z": "74483b359e98ec98",
+        "name": "",
+        "group": "f0dfa14c6d49d276",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "label": "Outdoor Temp",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "dd HH:mm",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "45",
+        "ymax": "85",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1110,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2ebd1b051f99075c",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "flux query (v1.8+)",
+        "func": "msg.query = 'from(bucket: \"esp2nred/autogen\")|> range(start: -' + msg.payload + ')|> filter(fn: (r) =>r._measurement == \"data\" and r._field == \"tempf\" and r.device == \"temp\" and r.location == \"4\")';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 310,
+        "y": 340,
+        "wires": [
+            [
+                "4e53420b651676bd"
+            ]
+        ]
+    },
+    {
+        "id": "2c32f51b6899e59e",
+        "type": "ui_dropdown",
+        "z": "74483b359e98ec98",
+        "name": "",
+        "label": "Date Range",
+        "tooltip": "",
+        "place": "7d",
+        "group": "f0dfa14c6d49d276",
+        "order": 5,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "",
+                "value": "6h",
+                "type": "str"
+            },
+            {
+                "label": "",
+                "value": "12h",
+                "type": "str"
+            },
+            {
+                "label": "",
+                "value": "1d",
+                "type": "str"
+            },
+            {
+                "label": "",
+                "value": "7d",
+                "type": "str"
+            },
+            {
+                "label": "",
+                "value": "30d",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "",
+        "topicType": "str",
+        "className": "",
+        "x": 110,
+        "y": 340,
+        "wires": [
+            [
+                "2ebd1b051f99075c",
+                "9b3886b83c98a9aa",
+                "92a6106b12d336bf",
+                "839881538c8d7340",
+                "4cc3610a2edc3e35",
+                "e3d8772973eae3a9",
+                "83dbaddc90866275",
+                "2fd7a63b40ccf9c2"
+            ]
+        ]
+    },
+    {
+        "id": "1c2193c32f69da40",
+        "type": "ui_chart",
+        "z": "74483b359e98ec98",
+        "name": "",
+        "group": "9fc2fc6e7d61cccc",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "label": "Basement Temp",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "dd HH:mm",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "45",
+        "ymax": "85",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1120,
+        "y": 380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "bd09a86ef6c8c19f",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "Convert flux query result to JSON format",
+        "func": "// Convert flux query result to JSON format for charting\n// Built from https://funprojects.blog/\n\nvar series = [\"series\"];\nvar labels = [\"labels\"];\nvar data = \"[[\";\nvar dateTime;\n\n// Flux query will send msg.payload[i]._time as a string. Can not use NUMBER() function to convert it to epoch time.\n// (can use msg.varA-Type = typeof varA to check)\n\nfor (var i=0; i < msg.payload.length; i++) {\n    dateTime = Date.parse(msg.payload[i]._time); // Date.parse will convert date to unix epoch time. ie 1614630735\n    data += '{ \"x\":' + dateTime + ', \"y\":' + msg.payload[i]._value + '}';\n    if (i < (msg.payload.length - 1)) {\n        data += \",\"\n    } else {\n        data += \"]]\"\n    }\n}\nvar jsondata = JSON.parse(data);\nmsg.payload = [{\"series\": series, \"data\": jsondata, \"labels\": labels}];\nmsg.playload = data;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 870,
+        "y": 380,
+        "wires": [
+            [
+                "1c2193c32f69da40"
+            ]
+        ]
+    },
+    {
+        "id": "873a0f495c41c560",
+        "type": "influxdb in",
+        "z": "74483b359e98ec98",
+        "influxdb": "3e3327aa.370598",
+        "name": "",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "organisation",
+        "x": 560,
+        "y": 380,
+        "wires": [
+            [
+                "bd09a86ef6c8c19f"
+            ]
+        ]
+    },
+    {
+        "id": "9b3886b83c98a9aa",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "flux query (v1.8+)",
+        "func": "msg.query = 'from(bucket: \"esp2nred/autogen\")|> range(start: -' + msg.payload + ')|> filter(fn: (r) =>r._measurement == \"data\" and r._field == \"tempf\" and r.device == \"temp\" and r.location == \"2\")';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 380,
+        "wires": [
+            [
+                "873a0f495c41c560"
+            ]
+        ]
+    },
+    {
+        "id": "a9175d30d25f52b4",
+        "type": "ui_chart",
+        "z": "74483b359e98ec98",
+        "name": "",
+        "group": "25bef336fb943ae3",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "label": "LivingRoom Temp",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "dd HH:mm",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "45",
+        "ymax": "85",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1130,
+        "y": 420,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "e0d6bd7132477810",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "Convert flux query result to JSON format",
+        "func": "// Convert flux query result to JSON format for charting\n// Built from https://funprojects.blog/\n\nvar series = [\"series\"];\nvar labels = [\"labels\"];\nvar data = \"[[\";\nvar dateTime;\n\n// Flux query will send msg.payload[i]._time as a string. Can not use NUMBER() function to convert it to epoch time.\n// (can use msg.varA-Type = typeof varA to check)\n\nfor (var i=0; i < msg.payload.length; i++) {\n    dateTime = Date.parse(msg.payload[i]._time); // Date.parse will convert date to unix epoch time. ie 1614630735\n    data += '{ \"x\":' + dateTime + ', \"y\":' + msg.payload[i]._value + '}';\n    if (i < (msg.payload.length - 1)) {\n        data += \",\"\n    } else {\n        data += \"]]\"\n    }\n}\nvar jsondata = JSON.parse(data);\nmsg.payload = [{\"series\": series, \"data\": jsondata, \"labels\": labels}];\nmsg.playload = data;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 870,
+        "y": 420,
+        "wires": [
+            [
+                "a9175d30d25f52b4"
+            ]
+        ]
+    },
+    {
+        "id": "20fa9c84c64fe6e1",
+        "type": "influxdb in",
+        "z": "74483b359e98ec98",
+        "influxdb": "3e3327aa.370598",
+        "name": "",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "organisation",
+        "x": 560,
+        "y": 420,
+        "wires": [
+            [
+                "e0d6bd7132477810"
+            ]
+        ]
+    },
+    {
+        "id": "92a6106b12d336bf",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "flux query (v1.8+)",
+        "func": "msg.query = 'from(bucket: \"esp2nred/autogen\")|> range(start: -' + msg.payload + ')|> filter(fn: (r) =>r._measurement == \"data\" and r._field == \"tempf\" and r.device == \"temp\" and r.location == \"3\")';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 420,
+        "wires": [
+            [
+                "20fa9c84c64fe6e1"
+            ]
+        ]
+    },
+    {
+        "id": "73fdd7deb2d401f3",
+        "type": "ui_chart",
+        "z": "74483b359e98ec98",
+        "name": "",
+        "group": "5b3e94e731163cdb",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "label": "PoolRoom Temp",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "dd HH:mm",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "45",
+        "ymax": "85",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1120,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ba1f8388a202df58",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "Convert flux query result to JSON format",
+        "func": "// Convert flux query result to JSON format for charting\n// Built from https://funprojects.blog/\n\nvar series = [\"series\"];\nvar labels = [\"labels\"];\nvar data = \"[[\";\nvar dateTime;\n\n// Flux query will send msg.payload[i]._time as a string. Can not use NUMBER() function to convert it to epoch time.\n// (can use msg.varA-Type = typeof varA to check)\n\nfor (var i=0; i < msg.payload.length; i++) {\n    dateTime = Date.parse(msg.payload[i]._time); // Date.parse will convert date to unix epoch time. ie 1614630735\n    data += '{ \"x\":' + dateTime + ', \"y\":' + msg.payload[i]._value + '}';\n    if (i < (msg.payload.length - 1)) {\n        data += \",\"\n    } else {\n        data += \"]]\"\n    }\n}\nvar jsondata = JSON.parse(data);\nmsg.payload = [{\"series\": series, \"data\": jsondata, \"labels\": labels}];\nmsg.playload = data;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 870,
+        "y": 460,
+        "wires": [
+            [
+                "73fdd7deb2d401f3"
+            ]
+        ]
+    },
+    {
+        "id": "37066263e011f38b",
+        "type": "influxdb in",
+        "z": "74483b359e98ec98",
+        "influxdb": "3e3327aa.370598",
+        "name": "",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "organisation",
+        "x": 560,
+        "y": 460,
+        "wires": [
+            [
+                "ba1f8388a202df58"
+            ]
+        ]
+    },
+    {
+        "id": "839881538c8d7340",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "flux query (v1.8+)",
+        "func": "msg.query = 'from(bucket: \"esp2nred/autogen\")|> range(start: -' + msg.payload + ')|> filter(fn: (r) =>r._measurement == \"data\" and r._field == \"tempf\" and r.device == \"temp\" and r.location == \"1\")';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 460,
+        "wires": [
+            [
+                "37066263e011f38b"
+            ]
+        ]
+    },
+    {
+        "id": "77c4adca08167fe3",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "Convert flux query result to JSON format",
+        "func": "// Convert flux query result to JSON format for charting\n// Built from https://funprojects.blog/\n\nvar series = [\"series\"];\nvar labels = [\"labels\"];\nvar data = \"[[\";\nvar dateTime;\n\n// Flux query will send msg.payload[i]._time as a string. Can not use NUMBER() function to convert it to epoch time.\n// (can use msg.varA-Type = typeof varA to check)\n\nfor (var i=0; i < msg.payload.length; i++) {\n    dateTime = Date.parse(msg.payload[i]._time); // Date.parse will convert date to unix epoch time. ie 1614630735\n    data += '{ \"x\":' + dateTime + ', \"y\":' + msg.payload[i]._value + '}';\n    if (i < (msg.payload.length - 1)) {\n        data += \",\"\n    } else {\n        data += \"]]\"\n    }\n}\nvar jsondata = JSON.parse(data);\nmsg.payload = [{\"series\": series, \"data\": jsondata, \"labels\": labels}];\nmsg.playload = data;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 860,
+        "y": 520,
+        "wires": [
+            [
+                "0d454dd4847a6079"
+            ]
+        ]
+    },
+    {
+        "id": "12f3fdfb12f493b5",
+        "type": "influxdb in",
+        "z": "74483b359e98ec98",
+        "influxdb": "3e3327aa.370598",
+        "name": "",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "organisation",
+        "x": 550,
+        "y": 520,
+        "wires": [
+            [
+                "77c4adca08167fe3"
+            ]
+        ]
+    },
+    {
+        "id": "0d454dd4847a6079",
+        "type": "ui_chart",
+        "z": "74483b359e98ec98",
+        "name": "",
+        "group": "f0dfa14c6d49d276",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "label": "Outdoor Humidity",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "dd HH:mm",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "20",
+        "ymax": "90",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1120,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4cc3610a2edc3e35",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "flux query (v1.8+)",
+        "func": "msg.query = 'from(bucket: \"esp2nred/autogen\")|> range(start: -' + msg.payload + ')|> filter(fn: (r) =>r._measurement == \"data\" and r._field == \"humidityi\" and r.device == \"temp\" and r.location == \"4\")';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 310,
+        "y": 520,
+        "wires": [
+            [
+                "12f3fdfb12f493b5"
+            ]
+        ]
+    },
+    {
+        "id": "84a214c3c2264b0f",
+        "type": "ui_chart",
+        "z": "74483b359e98ec98",
+        "name": "",
+        "group": "9fc2fc6e7d61cccc",
+        "order": 6,
+        "width": 0,
+        "height": 0,
+        "label": "Basement Humidity",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "dd HH:mm",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "20",
+        "ymax": "90",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1130,
+        "y": 560,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "e50b2038d8acf1aa",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "Convert flux query result to JSON format",
+        "func": "// Convert flux query result to JSON format for charting\n// Built from https://funprojects.blog/\n\nvar series = [\"series\"];\nvar labels = [\"labels\"];\nvar data = \"[[\";\nvar dateTime;\n\n// Flux query will send msg.payload[i]._time as a string. Can not use NUMBER() function to convert it to epoch time.\n// (can use msg.varA-Type = typeof varA to check)\n\nfor (var i=0; i < msg.payload.length; i++) {\n    dateTime = Date.parse(msg.payload[i]._time); // Date.parse will convert date to unix epoch time. ie 1614630735\n    data += '{ \"x\":' + dateTime + ', \"y\":' + msg.payload[i]._value + '}';\n    if (i < (msg.payload.length - 1)) {\n        data += \",\"\n    } else {\n        data += \"]]\"\n    }\n}\nvar jsondata = JSON.parse(data);\nmsg.payload = [{\"series\": series, \"data\": jsondata, \"labels\": labels}];\nmsg.playload = data;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 870,
+        "y": 560,
+        "wires": [
+            [
+                "84a214c3c2264b0f"
+            ]
+        ]
+    },
+    {
+        "id": "c38843f7bb364674",
+        "type": "influxdb in",
+        "z": "74483b359e98ec98",
+        "influxdb": "3e3327aa.370598",
+        "name": "",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "organisation",
+        "x": 560,
+        "y": 560,
+        "wires": [
+            [
+                "e50b2038d8acf1aa"
+            ]
+        ]
+    },
+    {
+        "id": "e3d8772973eae3a9",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "flux query (v1.8+)",
+        "func": "msg.query = 'from(bucket: \"esp2nred/autogen\")|> range(start: -' + msg.payload + ')|> filter(fn: (r) =>r._measurement == \"data\" and r._field == \"humidityi\" and r.device == \"temp\" and r.location == \"2\")';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 560,
+        "wires": [
+            [
+                "c38843f7bb364674"
+            ]
+        ]
+    },
+    {
+        "id": "724aabcbe1969bbf",
+        "type": "ui_chart",
+        "z": "74483b359e98ec98",
+        "name": "",
+        "group": "25bef336fb943ae3",
+        "order": 6,
+        "width": 0,
+        "height": 0,
+        "label": "LivingRoom Humidity",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "dd HH:mm",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "20",
+        "ymax": "90",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1140,
+        "y": 600,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f37b20093b1643a4",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "Convert flux query result to JSON format",
+        "func": "// Convert flux query result to JSON format for charting\n// Built from https://funprojects.blog/\n\nvar series = [\"series\"];\nvar labels = [\"labels\"];\nvar data = \"[[\";\nvar dateTime;\n\n// Flux query will send msg.payload[i]._time as a string. Can not use NUMBER() function to convert it to epoch time.\n// (can use msg.varA-Type = typeof varA to check)\n\nfor (var i=0; i < msg.payload.length; i++) {\n    dateTime = Date.parse(msg.payload[i]._time); // Date.parse will convert date to unix epoch time. ie 1614630735\n    data += '{ \"x\":' + dateTime + ', \"y\":' + msg.payload[i]._value + '}';\n    if (i < (msg.payload.length - 1)) {\n        data += \",\"\n    } else {\n        data += \"]]\"\n    }\n}\nvar jsondata = JSON.parse(data);\nmsg.payload = [{\"series\": series, \"data\": jsondata, \"labels\": labels}];\nmsg.playload = data;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 870,
+        "y": 600,
+        "wires": [
+            [
+                "724aabcbe1969bbf"
+            ]
+        ]
+    },
+    {
+        "id": "5cf5b5b5d6b15787",
+        "type": "influxdb in",
+        "z": "74483b359e98ec98",
+        "influxdb": "3e3327aa.370598",
+        "name": "",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "organisation",
+        "x": 560,
+        "y": 600,
+        "wires": [
+            [
+                "f37b20093b1643a4"
+            ]
+        ]
+    },
+    {
+        "id": "83dbaddc90866275",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "flux query (v1.8+)",
+        "func": "msg.query = 'from(bucket: \"esp2nred/autogen\")|> range(start: -' + msg.payload + ')|> filter(fn: (r) =>r._measurement == \"data\" and r._field == \"humidityi\" and r.device == \"temp\" and r.location == \"3\")';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 600,
+        "wires": [
+            [
+                "5cf5b5b5d6b15787"
+            ]
+        ]
+    },
+    {
+        "id": "9e4ac0d23cbe9e91",
+        "type": "ui_chart",
+        "z": "74483b359e98ec98",
+        "name": "",
+        "group": "5b3e94e731163cdb",
+        "order": 5,
+        "width": 0,
+        "height": 0,
+        "label": "PoolRoom Humidity",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "dd HH:mm",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "20",
+        "ymax": "90",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1140,
+        "y": 640,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2c5681f3fb13eabc",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "Convert flux query result to JSON format",
+        "func": "// Convert flux query result to JSON format for charting\n// Built from https://funprojects.blog/\n\nvar series = [\"series\"];\nvar labels = [\"labels\"];\nvar data = \"[[\";\nvar dateTime;\n\n// Flux query will send msg.payload[i]._time as a string. Can not use NUMBER() function to convert it to epoch time.\n// (can use msg.varA-Type = typeof varA to check)\n\nfor (var i=0; i < msg.payload.length; i++) {\n    dateTime = Date.parse(msg.payload[i]._time); // Date.parse will convert date to unix epoch time. ie 1614630735\n    data += '{ \"x\":' + dateTime + ', \"y\":' + msg.payload[i]._value + '}';\n    if (i < (msg.payload.length - 1)) {\n        data += \",\"\n    } else {\n        data += \"]]\"\n    }\n}\nvar jsondata = JSON.parse(data);\nmsg.payload = [{\"series\": series, \"data\": jsondata, \"labels\": labels}];\nmsg.playload = data;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 870,
+        "y": 640,
+        "wires": [
+            [
+                "9e4ac0d23cbe9e91"
+            ]
+        ]
+    },
+    {
+        "id": "29fa6dba1a68580e",
+        "type": "influxdb in",
+        "z": "74483b359e98ec98",
+        "influxdb": "3e3327aa.370598",
+        "name": "",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "organisation",
+        "x": 560,
+        "y": 640,
+        "wires": [
+            [
+                "2c5681f3fb13eabc"
+            ]
+        ]
+    },
+    {
+        "id": "2fd7a63b40ccf9c2",
+        "type": "function",
+        "z": "74483b359e98ec98",
+        "name": "flux query (v1.8+)",
+        "func": "msg.query = 'from(bucket: \"esp2nred/autogen\")|> range(start: -' + msg.payload + ')|> filter(fn: (r) =>r._measurement == \"data\" and r._field == \"humidityi\" and r.device == \"temp\" and r.location == \"1\")';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 640,
+        "wires": [
+            [
+                "29fa6dba1a68580e"
+            ]
+        ]
+    },
+    {
+        "id": "879608664bc603c3",
+        "type": "ui_gauge",
+        "z": "74483b359e98ec98",
+        "name": "Pool Room T",
+        "group": "5b3e94e731163cdb",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Temp (F)",
+        "label": "F",
+        "format": " {{value | number:0}}",
+        "min": "30",
+        "max": "95",
+        "colors": [
+            "#1a5fb4",
+            "#8ff0a4",
+            "#ff0000"
+        ],
+        "seg1": "70",
+        "seg2": "79",
+        "className": "",
+        "x": 850,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "f8e23643f6746b1d",
+        "type": "change",
+        "z": "74483b359e98ec98",
+        "name": "T1",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload[0].tempf",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 710,
+        "y": 140,
+        "wires": [
+            [
+                "879608664bc603c3"
+            ]
+        ]
+    },
+    {
+        "id": "0c253055d6cde875",
+        "type": "ui_gauge",
+        "z": "74483b359e98ec98",
+        "name": "Pool Room H",
+        "group": "5b3e94e731163cdb",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Humidity(%)",
+        "label": "F",
+        "format": " {{value | number:0}}%",
+        "min": "20",
+        "max": "95",
+        "colors": [
+            "#e01b24",
+            "#33d17a",
+            "#1c71d8"
+        ],
+        "seg1": "40",
+        "seg2": "60",
+        "className": "",
+        "x": 1130,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "4428c81b0a84aa1b",
+        "type": "change",
+        "z": "74483b359e98ec98",
+        "name": "H1",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload[0].humidityi",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 990,
+        "y": 140,
+        "wires": [
+            [
+                "0c253055d6cde875"
+            ]
+        ]
+    },
+    {
+        "id": "0eb1ef102abc9bf4",
+        "type": "ui_gauge",
+        "z": "74483b359e98ec98",
+        "name": "Basement T",
+        "group": "9fc2fc6e7d61cccc",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Temp (F)",
+        "label": "F",
+        "format": " {{value | number:0}}",
+        "min": "30",
+        "max": "95",
+        "colors": [
+            "#1a5fb4",
+            "#8ff0a4",
+            "#ff0000"
+        ],
+        "seg1": "70",
+        "seg2": "79",
+        "className": "",
+        "x": 870,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "01a2f950f87195f5",
+        "type": "change",
+        "z": "74483b359e98ec98",
+        "name": "T2",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload[0].tempf",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 730,
+        "y": 180,
+        "wires": [
+            [
+                "0eb1ef102abc9bf4"
+            ]
+        ]
+    },
+    {
+        "id": "f4c4c6c60a8cbf46",
+        "type": "ui_gauge",
+        "z": "74483b359e98ec98",
+        "name": "Basement H",
+        "group": "9fc2fc6e7d61cccc",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Humidity(%)",
+        "label": "F",
+        "format": " {{value | number:0}}%",
+        "min": "20",
+        "max": "95",
+        "colors": [
+            "#e01b24",
+            "#57e389",
+            "#1c71d8"
+        ],
+        "seg1": "40",
+        "seg2": "60",
+        "className": "",
+        "x": 1150,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "7f1c6b1055c3dc5b",
+        "type": "change",
+        "z": "74483b359e98ec98",
+        "name": "H2",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload[0].humidityi",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1010,
+        "y": 180,
+        "wires": [
+            [
+                "f4c4c6c60a8cbf46"
+            ]
+        ]
+    },
+    {
+        "id": "5c99664d75f19d30",
+        "type": "ui_gauge",
+        "z": "74483b359e98ec98",
+        "name": "Living Room T",
+        "group": "25bef336fb943ae3",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Temp (F)",
+        "label": "F",
+        "format": " {{value | number:0}}",
+        "min": "30",
+        "max": "95",
+        "colors": [
+            "#1a5fb4",
+            "#8ff0a4",
+            "#ff0000"
+        ],
+        "seg1": "70",
+        "seg2": "79",
+        "className": "",
+        "x": 880,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "b61a19b9e66bcf96",
+        "type": "change",
+        "z": "74483b359e98ec98",
+        "name": "T3",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload[0].tempf",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 730,
+        "y": 220,
+        "wires": [
+            [
+                "5c99664d75f19d30"
+            ]
+        ]
+    },
+    {
+        "id": "c2384c9a19f880cb",
+        "type": "ui_gauge",
+        "z": "74483b359e98ec98",
+        "name": "Living Room H",
+        "group": "25bef336fb943ae3",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Humidity(%)",
+        "label": "F",
+        "format": " {{value | number:0}}%",
+        "min": "20",
+        "max": "95",
+        "colors": [
+            "#e01b24",
+            "#33d17a",
+            "#1c71d8"
+        ],
+        "seg1": "40",
+        "seg2": "60",
+        "className": "",
+        "x": 1180,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "3c465f1bcdac82e9",
+        "type": "change",
+        "z": "74483b359e98ec98",
+        "name": "H3",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload[0].humidityi",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1030,
+        "y": 220,
+        "wires": [
+            [
+                "c2384c9a19f880cb"
+            ]
+        ]
+    },
+    {
+        "id": "41a06940fe4ab123",
+        "type": "ui_gauge",
+        "z": "74483b359e98ec98",
+        "name": "Outdoor T",
+        "group": "f0dfa14c6d49d276",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Temp (F)",
+        "label": "F",
+        "format": " {{value | number:0}}",
+        "min": "30",
+        "max": "95",
+        "colors": [
+            "#1a5fb4",
+            "#8ff0a4",
+            "#ff0000"
+        ],
+        "seg1": "70",
+        "seg2": "79",
+        "className": "",
+        "x": 840,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "a196bc9f55821ceb",
+        "type": "change",
+        "z": "74483b359e98ec98",
+        "name": "T4",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload[0].tempf",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 710,
+        "y": 260,
+        "wires": [
+            [
+                "41a06940fe4ab123"
+            ]
+        ]
+    },
+    {
+        "id": "040eaaeab2f4821b",
+        "type": "ui_gauge",
+        "z": "74483b359e98ec98",
+        "name": "Outdoor H",
+        "group": "f0dfa14c6d49d276",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Humidity(%)",
+        "label": "F",
+        "format": " {{value | number:0}}%",
+        "min": "20",
+        "max": "95",
+        "colors": [
+            "#e01b24",
+            "#33d17a",
+            "#1c71d8"
+        ],
+        "seg1": "40",
+        "seg2": "60",
+        "className": "",
+        "x": 1130,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "a5f27c3907ab6d25",
+        "type": "change",
+        "z": "74483b359e98ec98",
+        "name": "H4",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload[0].humidityi",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 990,
+        "y": 260,
+        "wires": [
+            [
+                "040eaaeab2f4821b"
+            ]
+        ]
+    },
+    {
+        "id": "126ea320118c22af",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "6006ea813af8600e",
+        "type": "influxdb",
+        "hostname": "127.0.0.1",
+        "port": "8086",
+        "protocol": "http",
+        "database": "database",
+        "name": "",
+        "usetls": false,
+        "tls": "5a1ed586.fc57cc",
+        "influxdbVersion": "1.8-flux",
+        "url": "http://localhost:8086",
+        "rejectUnauthorized": true
+    },
+    {
+        "id": "3e3327aa.370598",
+        "type": "influxdb",
+        "hostname": "127.0.0.1",
+        "port": "8086",
+        "protocol": "http",
+        "database": "rpimonitor",
+        "name": "",
+        "usetls": false,
+        "tls": "5a1ed586.fc57cc",
+        "influxdbVersion": "1.8-flux",
+        "url": "http://localhost:8086/",
+        "rejectUnauthorized": true
+    },
+    {
+        "id": "f0dfa14c6d49d276",
+        "type": "ui_group",
+        "name": "Outdoor",
+        "tab": "35093968582ff7ec",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "9fc2fc6e7d61cccc",
+        "type": "ui_group",
+        "name": "Basement",
+        "tab": "35093968582ff7ec",
+        "order": 2,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "25bef336fb943ae3",
+        "type": "ui_group",
+        "name": "LivingRoom",
+        "tab": "35093968582ff7ec",
+        "order": 3,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "5b3e94e731163cdb",
+        "type": "ui_group",
+        "name": "PoolRoom",
+        "tab": "35093968582ff7ec",
+        "order": 4,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "5a1ed586.fc57cc",
+        "type": "tls-config",
+        "name": "local-tls",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "",
+        "verifyservercert": false
+    },
+    {
+        "id": "35093968582ff7ec",
+        "type": "ui_tab",
+        "name": "Home Temp",
+        "icon": "dashboard",
+        "order": 3,
+        "disabled": false,
+        "hidden": false
+    }
+]
