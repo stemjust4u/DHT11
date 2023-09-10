@@ -19,23 +19,25 @@ with InfluxDBClient(url=url, token=token, org=org) as client:
 
 #print(df)
 
+# https://dash.plotly.com/tutorial
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__) # Initialize the app
 
+                          # Layout of the graphs, tables, drop down menus, etc
 app.layout = html.Div([
-    dcc.Graph(id='graph'),
+    dcc.Graph(figure={}, id='graph'),
     dcc.Checklist(
-        id="checklist",
+        id="checklist",  # id names will be used by the callback to identify the components
         options=["1", "2", "3","4"],
-        value=["1", "2"],
+        value=["1", "2", "3", "4"], # default selections
         inline=True
     ),
 ])
 
 @app.callback(
-    Output("graph", "figure"), 
-    Input("checklist", "value"))
-def update_line_chart(sensor):
+    Output("graph", "figure"),    # args are component id and then component property
+    Input("checklist", "value"))  # args are component id and then component property
+def update_line_chart(sensor):    # callback function arg 'sensor' refers to the component property of the input or "value" above
     mask = df.location.isin(sensor)
     fig = px.line(df[mask], 
         x="_time", y="tempf", color='location')
