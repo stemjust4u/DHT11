@@ -4,7 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 import dash
-from dash import dcc, html
+from dash import dcc, html, dash_table
 import plotly.express as px
 from dash.dependencies import Input, Output
 
@@ -15,9 +15,11 @@ bucket = 'esp2nred'
 
 with InfluxDBClient(url=url, token=token, org=org) as client:
     query_api = client.query_api()
-    df = pd.DataFrame(client.query_api().query_data_frame('from(bucket: "esp2nred") |> range(start: -3d) |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'))
+    df = pd.DataFrame(client.query_api().query_data_frame('from(bucket: "esp2nred") |> range(start: -4d) |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'))
+    df = df.drop(columns=['result', 'table', '_start', '_stop', '_measurement', 'device'])
 
 #print(df)
+
 
 # https://dash.plotly.com/tutorial
 
@@ -25,6 +27,8 @@ app = dash.Dash(__name__) # Initialize the app
 
                           # Layout of the graphs, tables, drop down menus, etc
 app.layout = html.Div([
+    html.Div(children='My First App with Data'),
+    dash_table.DataTable(data=df.to_dict('records'), page_size=10),
     dcc.Graph(figure={}, id='graph'),
     dcc.Checklist(
         id="checklist",  # id names will be used by the callback to identify the components
