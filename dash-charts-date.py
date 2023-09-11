@@ -31,7 +31,11 @@ with InfluxDBClient(url=url, token=token, org=org) as client:
     query_api = client.query_api()
     df = pd.DataFrame(client.query_api().query_data_frame('from(bucket: "esp2nred") |> range(start: -4d) |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'))
     df = df.drop(columns=['result', 'table', '_start', '_stop', '_measurement', 'device'])
-    df.to_csv('dht11-temp-data.csv')
+    df = df.assign(date=df['_time'].dt.strftime('%Y-%m-%d'))
+    print(df.dtypes)
+    df['date'] = pd.to_datetime(df['date'])
+    print(df.dtypes)
+    #df.to_csv('dht11-temp-data.csv')
 
 # CREATE TABLES/GRAPHS THAT ARE NOT CREATED WITH CALLBACK (not interactive)
 # Create summary dataframe with statistics
@@ -55,10 +59,19 @@ dbc_css = "assets/dbc.css"
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SOLAR, dbc_css])
 # available themes: BOOTSTRAP, CERULEAN, COSMO, CYBORG, DARKLY, FLATLY, JOURNAL, LITERA, LUMEN, LUX, MATERIA, MINTY, MORPH, PULSE, QUARTZ, SANDSTONE, SIMPLEX, SKETCHY, SLATE, SOLAR, SPACELAB, SUPERHERO, UNITED, VAPOR, YETI, ZEPHYR
 
+print(df)
 # Layout of the dash graphs, tables, drop down menus, etc
 # Using dbc container for styling/formatting
 app.layout = dbc.Container(html.Div([
     html.Div(["Home Temp Data from DHT11 (units are F)",table], style={'display': 'inline-block', 'width': '50%'}),
+    html.Div(["Date Range",
+    dcc.DatePickerRange(
+        id="date-range",
+        min_date_allowed=df["date"].min().date(),
+        max_date_allowed=df["date"].max().date(),
+        start_date=df["date"].min().date(),
+        end_date=df["date"].max().date(),
+    )], style={'display': 'inline-block', 'width': '50%'}),
     html.Div('Sensor location 1:IndoorA 2:Basement 3:IndoorB 4:Outdoors'),
     dcc.Checklist(
         id="checklist",  # id names will be used by the callback to identify the components
@@ -84,11 +97,14 @@ app.layout = dbc.Container(html.Div([
 # CREATE INTERACTIVE GRAPHS
 @app.callback(
     Output("graph", "figure"),    # args are component id and then component property
-    Input("checklist", "value"))  # args are component id and then component property
-def update_line_chart(sensor):    # callback function arg 'sensor' refers to the component property of the input or "value" above. If there are multiples it's in order
-    mask = df.location.isin(sensor)
-    fig = px.line(df[mask], 
-        x="_time", y="tempf", color='location')
+    Input("checklist", "value"),  # args are component id and then component property
+    Input("date-range", "start_date"),
+    Input("date-range", "end_date"))
+def update_line_chart(sensor, start_date, end_date):    # callback function arg 'sensor' refers to the component property of the input or "value" above
+    filtered_data = df.query("date >= @start_date and date <= @end_date")
+    mask = filtered_data.location.isin(sensor)
+    fig = px.line(filtered_data[mask], 
+        x='_time', y='tempf', color='location')
     return fig
 
 @app.callback(
