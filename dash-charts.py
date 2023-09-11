@@ -35,7 +35,6 @@ with InfluxDBClient(url=url, token=token, org=org) as client:
 
 # CREATE TABLES/GRAPHS THAT ARE NOT CREATED WITH CALLBACK (not interactive)
 # Create summary dataframe with statistics
-print(df.groupby('location')['tempf'].describe()) 
 dfsummary = df.groupby('location')['tempf'].describe()  # describe outputs a dataframe
 dfsummary = dfsummary.reset_index()  # this moves the index (locations 1,2,3,4) into a regular column so they show up in the dash table
 '''dfsummary.style.format({   # this would work if the values were floats. However they
@@ -45,13 +44,7 @@ dfsummary = dfsummary.reset_index()  # this moves the index (locations 1,2,3,4) 
 dfsummary.loc[:, "mean"] = dfsummary["mean"].map('{:.1f}'.format)
 dfsummary.loc[:, "std"] = dfsummary["std"].map('{:.1f}'.format)
 dfsummary.loc[:, "50%"] = dfsummary["50%"].map('{:.1f}'.format)
-print(dfsummary)
-print(dfsummary.index)
 table = dbc.Table.from_dataframe(dfsummary, striped=True, bordered=True, hover=True)
-#dfsummary = df.groupby('location')['tempf'].describe()[['mean', 'std']]
-#df2 = pd.DataFrame({'TempF': df['tempf'].groupby('location')['tempf'].describe()})
-#df2 = df2.reset_index()
-#print(df2)
 
 histogram1 = px.histogram(df, x="tempf", nbins=30)
 
@@ -65,11 +58,7 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SOLAR, dbc_css])
 # Layout of the dash graphs, tables, drop down menus, etc
 # Using dbc container for styling/formatting
 app.layout = dbc.Container(html.Div([
-    #html.H5("Home Temp Data from DHT11 (units are F)"),table,
     html.Div(["Home Temp Data from DHT11 (units are F)",table], style={'display': 'inline-block', 'width': '50%'}),
-    #dbc.Container([table], className="m-4 dbc"),
-    #dt.DataTable(data=dfsummary.to_dict('records'), page_size=10),
-    #dt.DataTable(data=df.describe(), columns=[{"name": i, "id": i} for i in df.describe().columns]),
     html.Div('Sensor location 1:IndoorA 2:Basement 3:IndoorB 4:Outdoors'),
     dcc.Checklist(
         id="checklist",  # id names will be used by the callback to identify the components
@@ -78,10 +67,6 @@ app.layout = dbc.Container(html.Div([
         inline=True),
     html.Div([dcc.Graph(figure={}, id='graph')], style={'display': 'inline-block', 'width': '50%'}),  # figure is blank dict because created in callback below
     html.Div([dcc.Graph(figure=histogram1, id='hist1')], style={'display': 'inline-block', 'width': '50%'}),
-    #html.Div([
-    #dcc.Graph(
-    #    id='Histo1',
-    #    figure=histogram1)], style={'width': '33%', 'display': 'inline-block', 'padding': '0 20'}),
     html.Div([
     html.P("y-axis:"),
     dcc.RadioItems(
@@ -122,3 +107,8 @@ def generate_chart(y):
 
 if __name__ == '__main__':
     app.run_server(debug=True)
+
+# Other ways to modify layout
+    #dbc.Container([table], className="m-4 dbc"),
+    #dt.DataTable(data=dfsummary.to_dict('records'), page_size=10),
+    #dt.DataTable(data=df.describe(), columns=[{"name": i, "id": i} for i in df.describe().columns]),
