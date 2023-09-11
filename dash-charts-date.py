@@ -10,6 +10,7 @@ from dash import dash_table as dt
 import plotly.express as px
 from dash.dependencies import Input, Output
 
+# Dash apps are Flask apps
 
 # https://dash.plotly.com/tutorial
 # https://bootswatch.com/
