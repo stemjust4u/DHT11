@@ -78,7 +78,7 @@ app.layout = dbc.Container(html.Div([
         options=["1", "2", "3","4"],
         value=["1", "2", "3", "4"], # default selections
         inline=True),
-    html.Div([dcc.Graph(figure={}, id='graph')], style={'display': 'inline-block', 'width': '50%'}),  # figure is blank dict because created in callback below
+    html.Div([dcc.Graph(figure={}, id='linechart1')], style={'display': 'inline-block', 'width': '50%'}),  # figure is blank dict because created in callback below
     html.Div([dcc.Graph(figure=histogram1, id='hist1')], style={'display': 'inline-block', 'width': '50%'}),
     html.Div([
     html.P("y-axis:"),
@@ -96,9 +96,9 @@ app.layout = dbc.Container(html.Div([
 
 # CREATE INTERACTIVE GRAPHS
 @app.callback(
-    Output("graph", "figure"),    # args are component id and then component property
-    Input("checklist", "value"),  # args are component id and then component property
-    Input("date-range", "start_date"),
+    Output("linechart1", "figure"),    # args are component id and then component property
+    Input("checklist", "value"),        # args are component id and then component property. component property is passed
+    Input("date-range", "start_date"),  # in order to the chart function below
     Input("date-range", "end_date"))
 def update_line_chart(sensor, start_date, end_date):    # callback function arg 'sensor' refers to the component property of the input or "value" above
     filtered_data = df.query("date >= @start_date and date <= @end_date")
