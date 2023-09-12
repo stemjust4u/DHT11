@@ -51,7 +51,11 @@ stats_temp = [[x for x in range(2)] for x in range(4)]
 
 Results = multi.pairwise_tukeyhsd(df['tempf'], df['location'], alpha= 0.05)
 dftukey = pd.DataFrame(data=Results._results_table.data[1:], columns=Results._results_table.data[0])
-table_tukey = dbc.Table.from_dataframe(dftukey, striped=True, bordered=True, hover=False) # use bootstrap formatting on table
+dftukey['reject'] = dftukey['reject'].astype(str)
+table_tukey = dbc.Table.from_dataframe(dftukey, striped=True, bordered=True, hover=True) # use bootstrap formatting on table
+#dt.DataTable(data=dfsummary.to_dict('records'), page_size=10),
+#table_tukey = dt.DataTable(data=dftukey.to_dict('records'), columns=[{"name": i, "id": i} for i in df.columns]),
+
 
 # CREATE TABLES/GRAPHS THAT ARE NOT CREATED WITH CALLBACK (not interactive)
 # Create summary dataframe with statistics
@@ -64,6 +68,9 @@ dfsummary = dfsummary.reset_index()  # this moves the index (locations 1,2,3,4) 
 dfsummary.loc[:, "mean"] = dfsummary["mean"].map('{:.1f}'.format)  # format as float. see comment above
 dfsummary.loc[:, "std"] = dfsummary["std"].map('{:.1f}'.format)
 dfsummary.loc[:, "50%"] = dfsummary["50%"].map('{:.1f}'.format)
+dfsummary = dfsummary.set_index('location').T.rename_axis('location')
+dfsummary = dfsummary.reset_index()
+print(dfsummary)
 table_summary = dbc.Table.from_dataframe(dfsummary, striped=True, bordered=True, hover=True) # use bootstrap formatting on table
 
 histogram1 = px.histogram(df, x="tempf", nbins=30)  # create histogram figure
@@ -79,8 +86,9 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE, dbc_css])
 # Layout of the dash graphs, tables, drop down menus, etc
 # Using dbc container for styling/formatting
 app.layout = dbc.Container(html.Div([
-    html.Div(["Home Temp Data from DHT11 (units are F)",table_summary], style={'display': 'inline-block', 'width': '40%'}),
-    html.Div(["Tukey HSD",table_tukey], style={'display': 'inline-block', 'width': '60%'}),
+    html.Div(["Home Temp Data from DHT11 (units are F)",table_summary], style={'display': 'inline-block', 'width': '48%'}),
+    html.Div(" ", style={'display': 'inline-block', 'width': '2%'}),
+    html.Div(["Tukey HSD 1:IndoorA 2:Basement 3:IndoorB 4:Outdoors",table_tukey], style={'display': 'inline-block', 'width': '48%'}),
     html.Div([
     html.P("y-axis:"),
     dcc.RadioItems(
