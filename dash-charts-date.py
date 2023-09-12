@@ -51,9 +51,7 @@ stats_temp = [[x for x in range(2)] for x in range(4)]
 
 Results = multi.pairwise_tukeyhsd(df['tempf'], df['location'], alpha= 0.05)
 dftukey = pd.DataFrame(data=Results._results_table.data[1:], columns=Results._results_table.data[0])
-print(dftukey)
-table_tukey = dbc.Table.from_dataframe(dftukey, striped=True, bordered=True, hover=True) # use bootstrap formatting on table
-print(table_tukey)
+table_tukey = dbc.Table.from_dataframe(dftukey, striped=True, bordered=True, hover=False) # use bootstrap formatting on table
 
 # CREATE TABLES/GRAPHS THAT ARE NOT CREATED WITH CALLBACK (not interactive)
 # Create summary dataframe with statistics
@@ -81,8 +79,20 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE, dbc_css])
 # Layout of the dash graphs, tables, drop down menus, etc
 # Using dbc container for styling/formatting
 app.layout = dbc.Container(html.Div([
-    html.Div(["Home Temp Data from DHT11 (units are F)",table_summary], style={'display': 'inline-block', 'width': '33%'}),
-    html.Div(["Tukey HSD",table_tukey], style={'display': 'inline-block', 'width': '33%'}),
+    html.Div(["Home Temp Data from DHT11 (units are F)",table_summary], style={'display': 'inline-block', 'width': '40%'}),
+    html.Div(["Tukey HSD",table_tukey], style={'display': 'inline-block', 'width': '60%'}),
+    html.Div([
+    html.P("y-axis:"),
+    dcc.RadioItems(
+        id='y-axis', 
+        options=[{'value': x, 'label': x} 
+                 for x in ['humidityi', 'tempf']],
+        value='tempf', 
+        labelStyle={'display': 'inline-block'}
+    ),
+    html.Div([dcc.Graph(figure={}, id="box-plot1")], style={'display': 'inline-block', 'width': '50%'}),
+    html.Div([dcc.Graph(figure={}, id="box-plot2")], style={'display': 'inline-block', 'width': '50%'}),
+    ]),
     html.Div(["Date Range",
     dcc.DatePickerRange(
         id="date-range",
@@ -99,18 +109,6 @@ app.layout = dbc.Container(html.Div([
         inline=True),
     html.Div([dcc.Graph(figure={}, id='linechart1')], style={'display': 'inline-block', 'width': '50%'}),  # figure is blank dict because created in callback below
     html.Div([dcc.Graph(figure=histogram1, id='hist1')], style={'display': 'inline-block', 'width': '50%'}),
-    html.Div([
-    html.P("y-axis:"),
-    dcc.RadioItems(
-        id='y-axis', 
-        options=[{'value': x, 'label': x} 
-                 for x in ['humidityi', 'tempf']],
-        value='tempf', 
-        labelStyle={'display': 'inline-block'}
-    ),
-    html.Div([dcc.Graph(figure={}, id="box-plot1")], style={'display': 'inline-block', 'width': '50%'}),
-    html.Div([dcc.Graph(figure={}, id="box-plot2")], style={'display': 'inline-block', 'width': '50%'}),
-    ])
 ]), fluid=True, className="dbc dbc-row-selectable")
 
 # CREATE INTERACTIVE GRAPHS
