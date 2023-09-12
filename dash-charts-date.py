@@ -2,6 +2,9 @@ import pandas as pd
 from influxdb_client import InfluxDBClient 
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy import stats
+import statsmodels.stats.multicomp as multi
+import numpy as np
 
 import dash
 import dash_bootstrap_components as dbc  # installed dash_bootstrap_templates too
@@ -30,13 +33,27 @@ bucket = 'esp2nred'
 
 with InfluxDBClient(url=url, token=token, org=org) as client:
     query_api = client.query_api()
-    df = pd.DataFrame(client.query_api().query_data_frame('from(bucket: "esp2nred") |> range(start: -4d) |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'))
+    df = pd.DataFrame(client.query_api().query_data_frame('from(bucket: "esp2nred") |> range(start: -5d) |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'))
     df = df.drop(columns=['result', 'table', '_start', '_stop', '_measurement', 'device'])
     df = df.assign(date=df['_time'].dt.strftime('%Y-%m-%d'))
-    print(df.dtypes)
     df['date'] = pd.to_datetime(df['date'])
-    print(df.dtypes)
     #df.to_csv('dht11-temp-data.csv')
+
+sensor = [i for i in range(4)]
+for i in range(4):
+    sensor[i] = df[(df['location'] == str(i+1))]
+
+stats_temp = [[x for x in range(2)] for x in range(4)]
+
+'''for i in range(1,4):
+    print(stats.levene(sensor[0]['tempf'], sensor[i]['tempf']))
+    print(stats.ttest_ind(sensor[0]['tempf'], sensor[i]['tempf'], equal_var=False))'''
+
+Results = multi.pairwise_tukeyhsd(df['tempf'], df['location'], alpha= 0.05)
+dftukey = pd.DataFrame(data=Results._results_table.data[1:], columns=Results._results_table.data[0])
+print(dftukey)
+table_tukey = dbc.Table.from_dataframe(dftukey, striped=True, bordered=True, hover=True) # use bootstrap formatting on table
+print(table_tukey)
 
 # CREATE TABLES/GRAPHS THAT ARE NOT CREATED WITH CALLBACK (not interactive)
 # Create summary dataframe with statistics
@@ -46,25 +63,26 @@ dfsummary = dfsummary.reset_index()  # this moves the index (locations 1,2,3,4) 
     "mean": "{:.1f}",         # were strings after the describe functions so had to use
     "std": "{:.1f}",          # the map function below
 })'''
-dfsummary.loc[:, "mean"] = dfsummary["mean"].map('{:.1f}'.format)
+dfsummary.loc[:, "mean"] = dfsummary["mean"].map('{:.1f}'.format)  # format as float. see comment above
 dfsummary.loc[:, "std"] = dfsummary["std"].map('{:.1f}'.format)
 dfsummary.loc[:, "50%"] = dfsummary["50%"].map('{:.1f}'.format)
-table = dbc.Table.from_dataframe(dfsummary, striped=True, bordered=True, hover=True)
+table_summary = dbc.Table.from_dataframe(dfsummary, striped=True, bordered=True, hover=True) # use bootstrap formatting on table
 
-histogram1 = px.histogram(df, x="tempf", nbins=30)
+histogram1 = px.histogram(df, x="tempf", nbins=30)  # create histogram figure
 
 # START DASH AND CREATE LAYOUT OF TABLES/GRAPHS
 # Use dash bootstrap components (dbc) for styling
 dbc_css = "assets/dbc.css"
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SOLAR, dbc_css])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE, dbc_css])
 # available themes: BOOTSTRAP, CERULEAN, COSMO, CYBORG, DARKLY, FLATLY, JOURNAL, LITERA, LUMEN, LUX, MATERIA, MINTY, MORPH, PULSE, QUARTZ, SANDSTONE, SIMPLEX, SKETCHY, SLATE, SOLAR, SPACELAB, SUPERHERO, UNITED, VAPOR, YETI, ZEPHYR
 
-print(df)
+
 # Layout of the dash graphs, tables, drop down menus, etc
 # Using dbc container for styling/formatting
 app.layout = dbc.Container(html.Div([
-    html.Div(["Home Temp Data from DHT11 (units are F)",table], style={'display': 'inline-block', 'width': '50%'}),
+    html.Div(["Home Temp Data from DHT11 (units are F)",table_summary], style={'display': 'inline-block', 'width': '33%'}),
+    html.Div(["Tukey HSD",table_tukey], style={'display': 'inline-block', 'width': '33%'}),
     html.Div(["Date Range",
     dcc.DatePickerRange(
         id="date-range",
@@ -72,7 +90,7 @@ app.layout = dbc.Container(html.Div([
         max_date_allowed=df["date"].max().date(),
         start_date=df["date"].min().date(),
         end_date=df["date"].max().date(),
-    )], style={'display': 'inline-block', 'width': '50%'}),
+    )], style={'display': 'inline-block', 'width': '33%'}),
     html.Div('Sensor location 1:IndoorA 2:Basement 3:IndoorB 4:Outdoors'),
     dcc.Checklist(
         id="checklist",  # id names will be used by the callback to identify the components
