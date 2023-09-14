@@ -11,7 +11,7 @@ import gc
 gc.collect()
 
 ssid = 'Freddie-Windstream'
-password = 'ironfish17'
+password = ''
 mqtt_server = 'rpi3mqtt1'
 #EXAMPLE IP ADDRESS or DOMAIN NAME
 #mqtt_server = 'rpi3mqtt1'
@@ -40,7 +40,7 @@ offsethum = -9
 
 def connect_mqtt():
   global client_id, mqtt_server
-  client = MQTTClient(client_id, mqtt_server, user='sj4u', password='dewberry2233')
+  client = MQTTClient(client_id, mqtt_server, user='sj4u', password='')
   #client = MQTTClient(client_id, mqtt_server, user=your_username, password=your_password)
   client.connect()
   print('Connected to %s MQTT broker' % (mqtt_server))
